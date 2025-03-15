@@ -32,8 +32,8 @@ private:
 
     QToolBox *toolBox;       // 新增：左侧工具箱
     QGraphicsScene *scene;
-    // ImageView *view; // 自定义视图
-    QGraphicsView *view;
+    ImageView *view; // 自定义视图
+    // QGraphicsView *view;
     QGraphicsPixmapItem *pixmapItem;
 
 

@@ -40,7 +40,9 @@ ImageViewer::ImageViewer(QWidget *parent) : QMainWindow(parent) {
 
     // ========== 创建图形视图 ==========
     scene = new QGraphicsScene(this);
-    view = new QGraphicsView(scene);
+    // view = new QGraphicsView(scene);
+    view = new ImageView(this);
+    setCentralWidget(view);
     view->setDragMode(QGraphicsView::ScrollHandDrag);
     view->setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
 
@@ -59,6 +61,7 @@ ImageViewer::ImageViewer(QWidget *parent) : QMainWindow(parent) {
     connect(btnReset, &QPushButton::clicked, this, &ImageViewer::resetZoom);
     connect(btnGrayscale, &QPushButton::clicked, this, &ImageViewer::applyGrayscale);
     connect(btnCanny, &QPushButton::clicked, this, &ImageViewer::applyCannyEdge);
+    connect(view, &ImageView::pixelHovered, this, &ImageViewer::onPixelHovered);
 
     // 设置工具箱样式
     toolBox->setStyleSheet(
@@ -93,6 +96,7 @@ void ImageViewer::openImage() {
         );
 
     if (!path.isEmpty()) {
+#if 0
         originalMat = cv::imread(path.toLocal8Bit().constData(), cv::IMREAD_COLOR);
         if (!originalMat.empty()) {
             cv::cvtColor(originalMat, originalMat, cv::COLOR_BGR2RGB);
@@ -100,6 +104,14 @@ void ImageViewer::openImage() {
             isProcessed = false;
             updateDisplay();
         }
+#else
+        originalMat = cv::imread(path.toLocal8Bit().constData());
+        if (originalMat.empty()) {
+            QMessageBox::critical(this, "错误", "图片加载失败");
+            return;
+        }
+        view->setImage(originalMat);
+#endif
     }
 }
 
@@ -227,13 +239,23 @@ void ImageViewer::mouseDoubleClickEvent(QMouseEvent*) {
     resetZoom();
 }
 
+void ImageViewer::onPixelHovered(int x, int y, const QColor &color)
+{
+    statusBar()->showMessage(
+        QString("坐标: (%1, %2) | RGB: (%3, %4, %5)")
+            .arg(x).arg(y)
+            .arg(color.red()).arg(color.green()).arg(color.blue())
+        );
+}
+
 // 灰度化处理
 void ImageViewer::applyGrayscale() {
     if (originalMat.empty()) return;
 
     cv::cvtColor(originalMat, processedMat, cv::COLOR_RGB2GRAY);
     isProcessed = true;
-    updateDisplay();
+    // updateDisplay();
+    view->setImage(processedMat);
 }
 
 // Canny边缘检测
@@ -244,7 +266,8 @@ void ImageViewer::applyCannyEdge() {
     cv::cvtColor(originalMat, gray, cv::COLOR_RGB2GRAY);
     cv::Canny(gray, processedMat, 50, 150);
     isProcessed = true;
-    updateDisplay();
+    // updateDisplay();
+    view->setImage(processedMat);
 }
 
 // ImageViewer.cpp
