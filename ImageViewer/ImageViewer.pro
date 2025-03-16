@@ -14,6 +14,11 @@ SOURCES += \
     imageviewer.cpp
 
 HEADERS += \
+    CannyEdgeProcessor.h \
+    ImageProcessor.h \
+    ProcessorFactory.h \
+    ResetProcess.h \
+    grayscaleprocessor.h \
     imageview.h \
     imageviewer.h
 

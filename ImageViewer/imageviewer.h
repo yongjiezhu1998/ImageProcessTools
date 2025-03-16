@@ -21,10 +21,11 @@ public slots:
     void saveImage();           // 保存图片
     void processImage();        // 处理图片（示例：灰度化）
     void resetZoom();           // 重置缩放
-    void applyGrayscale();      // 新增：灰度化工具
-    void applyCannyEdge();      // 新增：边缘检测工具
     void resetProcess();        // 重置操作
 
+    void onCannyEdgeTriggered();
+    void onGrayscaleTriggered();
+    void onResetProcess();
 protected:
     void mouseMoveEvent(QMouseEvent *event) override;
 
@@ -46,5 +47,6 @@ private:
 
     // bool event(QEvent *e);
     void onPixelHovered(int x, int y, const QColor &color);
+    void applyProcessor(const std::string &processorName);
 };
 #endif // IMAGEVIEWER_H

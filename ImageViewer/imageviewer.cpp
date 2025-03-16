@@ -1,4 +1,5 @@
 #include "imageviewer.h"
+#include "ProcessorFactory.h"
 // #include "ui_imageviewer.h"
 #include <QWheelEvent>
 #include <QVBoxLayout>
@@ -61,9 +62,9 @@ ImageViewer::ImageViewer(QWidget *parent) : QMainWindow(parent) {
     connect(btnOpen, &QPushButton::clicked, this, &ImageViewer::openImage);
     connect(btnSave, &QPushButton::clicked, this, &ImageViewer::saveImage);
     connect(btnReset, &QPushButton::clicked, this, &ImageViewer::resetZoom);
-    connect(resetProcess, &QPushButton::clicked, this, &ImageViewer::resetProcess);
-    connect(btnGrayscale, &QPushButton::clicked, this, &ImageViewer::applyGrayscale);
-    connect(btnCanny, &QPushButton::clicked, this, &ImageViewer::applyCannyEdge);
+    connect(resetProcess, &QPushButton::clicked, this, &ImageViewer::onResetProcess);
+    connect(btnGrayscale, &QPushButton::clicked, this, &ImageViewer::onGrayscaleTriggered);
+    connect(btnCanny, &QPushButton::clicked, this, &ImageViewer::onCannyEdgeTriggered);
     connect(view, &ImageView::pixelHovered, this, &ImageViewer::onPixelHovered);
 
     // 设置工具箱样式
@@ -84,12 +85,6 @@ ImageViewer::ImageViewer(QWidget *parent) : QMainWindow(parent) {
 
     // 在 ImageViewer 构造函数中添加
     setMouseTracking(true); // 启用全局鼠标追踪
-    // view->setMouseTracking(true); // 如果使用 QGraphicsView
-    // setAttribute(Qt::WA_Hover); // 可选：增强Hover事件
-
-    // 在视图初始化代码中（构造函数）
-    // view->setDragMode(QGraphicsView::NoDrag); // 关键代码
-    // view->setCursor(Qt::ArrowCursor);         // 显式设置光标样式
 }
 
 void ImageViewer::openImage() {
@@ -251,28 +246,6 @@ void ImageViewer::onPixelHovered(int x, int y, const QColor &color)
         );
 }
 
-// 灰度化处理
-void ImageViewer::applyGrayscale() {
-    if (originalMat.empty()) return;
-
-    cv::cvtColor(originalMat, processedMat, cv::COLOR_RGB2GRAY);
-    isProcessed = true;
-    // updateDisplay();
-    view->setImage(processedMat);
-}
-
-// Canny边缘检测
-void ImageViewer::applyCannyEdge() {
-    if (originalMat.empty()) return;
-
-    cv::Mat gray;
-    cv::cvtColor(originalMat, gray, cv::COLOR_RGB2GRAY);
-    cv::Canny(gray, processedMat, 50, 150);
-    isProcessed = true;
-    // updateDisplay();
-    view->setImage(processedMat);
-}
-
 // 重置图像处理
 void ImageViewer::resetProcess()
 {
@@ -317,4 +290,32 @@ void ImageViewer::mouseMoveEvent(QMouseEvent *event) {
     QMainWindow::mouseMoveEvent(event);
 }
 
+void ImageViewer::applyProcessor(const std::string &processorName) {
+    if (originalMat.empty()) return;
+
+    // 创建处理器
+    auto processor = ProcessorFactory::create(processorName);
+    if (!processor) {
+        QMessageBox::warning(this, "错误", "未找到指定算法");
+        return;
+    }
+
+    // 执行处理
+    cv::Mat result = processor->process(originalMat);
+
+    // 更新视图
+    view->setImage(result);
+}
+
+void ImageViewer::onGrayscaleTriggered() {
+    applyProcessor("Grayscale");
+}
+
+void ImageViewer::onCannyEdgeTriggered() {
+    applyProcessor("CannyEdge");
+}
+
+void ImageViewer::onResetProcess() {
+    applyProcessor("ResetProcess");
+}
 
