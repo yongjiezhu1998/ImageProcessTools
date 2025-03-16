@@ -2,6 +2,7 @@
 #include "ProcessorFactory.h"
 #include "GrayscaleProcessor.h"
 #include "CannyEdgeProcessor.h"
+#include "GaussianBlur.h"
 #include "ResetProcess.h"
 
 #include <QApplication>
@@ -20,8 +21,15 @@ int main(int argc, char *argv[])
     });
 
     ProcessorFactory::registerProcessor("ResetProcess", []() {
-        return std::make_unique<ResetProcess>(); // 可配置参数
+        return std::make_unique<ResetProcess>();
     });
+
+
+    // ProcessorFactory::registerProcessor("GaussianBlur", []() {
+    //     return std::make_unique<GaussianBlur>();
+    // });
+
+
 
     ImageViewer w;
     w.show();

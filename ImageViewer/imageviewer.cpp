@@ -7,6 +7,12 @@
 #include <QSplitter>
 #include <QMessageBox>
 #include <QStatusBar>
+#include <QComboBox>
+#include <QFormLayout>
+#include <QDoubleSpinBox>
+#include <QCheckBox>
+#include <QLabel>
+#include "GaussianBlur.h"
 
 ImageViewer::ImageViewer(QWidget *parent) : QMainWindow(parent) {
     // ========== 创建左侧工具箱 ==========
@@ -33,13 +39,19 @@ ImageViewer::ImageViewer(QWidget *parent) : QMainWindow(parent) {
     QPushButton *resetProcess = new QPushButton("恢复原图", processPage);
     QPushButton *btnGrayscale = new QPushButton("灰度化", processPage);
     QPushButton *btnCanny = new QPushButton("边缘检测", processPage);
+    QPushButton *btnGaussian = new QPushButton("高斯滤波", processPage);
 
     processLayout->addWidget(resetProcess);
     processLayout->addWidget(btnGrayscale);
     processLayout->addWidget(btnCanny);
+    processLayout->addWidget(btnGaussian);
     processLayout->addStretch();
 
     toolBox->addItem(processPage, "图像处理");
+
+    // 添加工具页：高斯滤波器处理
+    QWidget *gaussianBlurPage = gaussianBlurBoxLayout();
+    toolBox->addItem(gaussianBlurPage, "高斯滤波器");
 
     // ========== 创建图形视图 ==========
     scene = new QGraphicsScene(this);
@@ -65,6 +77,7 @@ ImageViewer::ImageViewer(QWidget *parent) : QMainWindow(parent) {
     connect(resetProcess, &QPushButton::clicked, this, &ImageViewer::onResetProcess);
     connect(btnGrayscale, &QPushButton::clicked, this, &ImageViewer::onGrayscaleTriggered);
     connect(btnCanny, &QPushButton::clicked, this, &ImageViewer::onCannyEdgeTriggered);
+    connect(btnGaussian, &QPushButton::clicked, this, &ImageViewer::onGaussianBlurTriggered);
     connect(view, &ImageView::pixelHovered, this, &ImageViewer::onPixelHovered);
 
     // 设置工具箱样式
@@ -81,37 +94,99 @@ ImageViewer::ImageViewer(QWidget *parent) : QMainWindow(parent) {
         "}"
     );
 
-    this->setFixedSize(800, 600); // 固定为 800x600 像素
+    this->setFixedSize(1000, 800);
 
     // 在 ImageViewer 构造函数中添加
     setMouseTracking(true); // 启用全局鼠标追踪
 }
 
-void ImageViewer::openImage() {
+QWidget* ImageViewer::gaussianBlurBoxLayout()
+{
+    QWidget *gaussianBlurPage = new QWidget;
+    QFormLayout *formLayout = new QFormLayout(gaussianBlurPage);
+
+    // 核大小选择（正奇数）
+    kernelSizeCombo = new QComboBox();
+    for (int i = 3; i <= 15; i += 2) {
+        kernelSizeCombo->addItem(QString::number(i) + "x" + QString::number(i), i);
+    }
+    formLayout->addRow("核大小:", kernelSizeCombo);
+
+    // X/Y标准差输入（带同步锁）
+    sigmaXSpin = new QDoubleSpinBox(gaussianBlurPage);
+    sigmaXSpin->setRange(0.1, 10.0);
+    sigmaXSpin->setValue(1.5);
+    sigmaXSpin->setSingleStep(0.1);
+
+    sigmaYSpin = new QDoubleSpinBox(gaussianBlurPage);
+    sigmaYSpin->setRange(0.1, 10.0);
+    sigmaYSpin->setValue(1.5);
+    sigmaYSpin->setSingleStep(0.1);
+
+    QCheckBox *syncSigmaCheck = new QCheckBox("同步 X/Y", gaussianBlurPage);
+    syncSigmaCheck->setChecked(true);
+    sigmaYSpin->setEnabled(false);
+
+    // 将标准差控件放入水平布局
+    QHBoxLayout *sigmaLayout = new QHBoxLayout();
+    sigmaLayout->addWidget(sigmaXSpin);
+    sigmaLayout->addWidget(new QLabel("→", gaussianBlurPage)); // 箭头分隔符
+    sigmaLayout->addWidget(sigmaYSpin);
+    sigmaLayout->addWidget(syncSigmaCheck);
+    formLayout->addRow("标准差 (σ):", sigmaLayout);
+
+    // 应用按钮
+    QPushButton *applyButton = new QPushButton("应用滤波", gaussianBlurPage);
+    formLayout->addRow(applyButton);
+
+    connect(sigmaXSpin, QOverload<double>::of(&QDoubleSpinBox::valueChanged), [=](double val) {
+        if (syncSigmaCheck->isChecked()) {
+            sigmaYSpin->blockSignals(true); // 避免循环触发
+            sigmaYSpin->setValue(val);
+            sigmaYSpin->blockSignals(false);
+        }
+    });
+
+    connect(syncSigmaCheck, &QCheckBox::toggled, [=](bool checked) {
+        sigmaYSpin->setEnabled(!checked);
+        if (checked) sigmaYSpin->setValue(sigmaXSpin->value());
+    });
+
+    // 注册高斯滤波器处理器（绑定当前参数）
+    ProcessorFactory::registerProcessor("GaussianBlur", [this]() -> std::unique_ptr<ImageProcessor> {
+        // 从当前界面控件获取参数
+        int kernelSize = this->kernelSizeCombo->currentData().toInt();
+        double sigmaX = this->sigmaXSpin->value();
+        double sigmaY = this->sigmaYSpin->value();
+
+        // 创建并返回带参数的处理器
+        return std::make_unique<GaussianBlur>(kernelSize, sigmaX, sigmaY);
+    });
+
+    // connect
+    connect(applyButton, &QPushButton::clicked, this, &ImageViewer::onGaussianBlurTriggered);
+
+
+    return gaussianBlurPage;
+}
+
+void ImageViewer::openImage()
+{
     QString path = QFileDialog::getOpenFileName(
         this, "选择图片", "",
         "图片文件 (*.png *.jpg *.bmp)"
         );
 
     if (!path.isEmpty()) {
-#if 0
-        originalMat = cv::imread(path.toLocal8Bit().constData(), cv::IMREAD_COLOR);
-        if (!originalMat.empty()) {
-            cv::cvtColor(originalMat, originalMat, cv::COLOR_BGR2RGB);
-            processedMat.release();
-            isProcessed = false;
-            updateDisplay();
-        }
-#else
         originalMat = cv::imread(path.toLocal8Bit().constData());
         if (originalMat.empty()) {
             QMessageBox::critical(this, "错误", "图片加载失败");
             return;
         }
         view->setImage(originalMat);
-#endif
     }
 }
+
 
 void ImageViewer::saveImage() {
     // 检查是否有处理后的图像
@@ -254,41 +329,6 @@ void ImageViewer::resetProcess()
     view->setImage(originalMat);
 }
 
-// ImageViewer.cpp
-void ImageViewer::mouseMoveEvent(QMouseEvent *event) {
-    qDebug() << "Mouse moved at:" << event->pos();
-    // event->accept(); // 明确接受事件，阻止继续传递
-    if (originalMat.empty()) return;
-
-    // 坐标转换
-    QPoint viewPos = event->pos();
-    QTransform transform = view->transform().inverted();
-    QPointF scenePos = transform.map(QPointF(viewPos));
-
-    int x = static_cast<int>(scenePos.x());
-    int y = static_cast<int>(scenePos.y());
-    qDebug() << "x:" << x << "y:" << y;
-
-    if (x >= 0 && x < originalMat.cols && y >= 0 && y < originalMat.rows) {
-        // 直接指针访问像素
-        uchar* data = originalMat.data;
-        int channels = originalMat.channels();
-        int row = y * originalMat.step;
-
-        int b = data[row + x * channels + 0];
-        int g = data[row + x * channels + 1];
-        int r = data[row + x * channels + 2];
-
-        statusBar()->showMessage(
-            QString("坐标: (%1, %2) | RGB: (%3, %4, %5)")
-                .arg(x).arg(y).arg(r).arg(g).arg(b)
-            );
-    } else {
-        statusBar()->clearMessage();
-    }
-
-    QMainWindow::mouseMoveEvent(event);
-}
 
 void ImageViewer::applyProcessor(const std::string &processorName) {
     if (originalMat.empty()) return;
@@ -311,11 +351,18 @@ void ImageViewer::onGrayscaleTriggered() {
     applyProcessor("Grayscale");
 }
 
-void ImageViewer::onCannyEdgeTriggered() {
+void ImageViewer::onGaussianBlurTriggered()
+{
+    applyProcessor("GaussianBlur");
+}
+
+void ImageViewer::onCannyEdgeTriggered()
+{
     applyProcessor("CannyEdge");
 }
 
-void ImageViewer::onResetProcess() {
+void ImageViewer::onResetProcess()
+{
     applyProcessor("ResetProcess");
 }
 

@@ -10,6 +10,8 @@
 #include <opencv2/opencv.hpp>
 #include <QFileDialog>
 #include <QToolBox>
+#include <QDoubleSpinBox>
+#include <QComboBox>
 
 class ImageViewer : public QMainWindow {
     Q_OBJECT
@@ -25,9 +27,9 @@ public slots:
 
     void onCannyEdgeTriggered();
     void onGrayscaleTriggered();
+    void onGaussianBlurTriggered();
     void onResetProcess();
-protected:
-    void mouseMoveEvent(QMouseEvent *event) override;
+
 
 private:
     void updateDisplay();      // 更新显示
@@ -37,6 +39,9 @@ private:
     ImageView *view; // 自定义视图
     // QGraphicsView *view;
     QGraphicsPixmapItem *pixmapItem;
+    QDoubleSpinBox *sigmaXSpin;
+    QDoubleSpinBox *sigmaYSpin;
+    QComboBox *kernelSizeCombo;
 
 
     cv::Mat originalMat;       // OpenCV原始图像
@@ -48,5 +53,6 @@ private:
     // bool event(QEvent *e);
     void onPixelHovered(int x, int y, const QColor &color);
     void applyProcessor(const std::string &processorName);
+    QWidget* gaussianBlurBoxLayout();
 };
 #endif // IMAGEVIEWER_H

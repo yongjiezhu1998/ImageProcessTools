@@ -15,6 +15,7 @@ SOURCES += \
 
 HEADERS += \
     CannyEdgeProcessor.h \
+    GaussianBlur.h \
     ImageProcessor.h \
     ProcessorFactory.h \
     ResetProcess.h \
