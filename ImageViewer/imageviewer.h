@@ -23,6 +23,7 @@ public slots:
     void resetZoom();           // 重置缩放
     void applyGrayscale();      // 新增：灰度化工具
     void applyCannyEdge();      // 新增：边缘检测工具
+    void resetProcess();        // 重置操作
 
 protected:
     void mouseMoveEvent(QMouseEvent *event) override;

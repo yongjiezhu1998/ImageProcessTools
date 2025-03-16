@@ -29,9 +29,11 @@ ImageViewer::ImageViewer(QWidget *parent) : QMainWindow(parent) {
     QWidget *processPage = new QWidget;
     QVBoxLayout *processLayout = new QVBoxLayout(processPage);
 
+    QPushButton *resetProcess = new QPushButton("恢复原图", processPage);
     QPushButton *btnGrayscale = new QPushButton("灰度化", processPage);
     QPushButton *btnCanny = new QPushButton("边缘检测", processPage);
 
+    processLayout->addWidget(resetProcess);
     processLayout->addWidget(btnGrayscale);
     processLayout->addWidget(btnCanny);
     processLayout->addStretch();
@@ -59,6 +61,7 @@ ImageViewer::ImageViewer(QWidget *parent) : QMainWindow(parent) {
     connect(btnOpen, &QPushButton::clicked, this, &ImageViewer::openImage);
     connect(btnSave, &QPushButton::clicked, this, &ImageViewer::saveImage);
     connect(btnReset, &QPushButton::clicked, this, &ImageViewer::resetZoom);
+    connect(resetProcess, &QPushButton::clicked, this, &ImageViewer::resetProcess);
     connect(btnGrayscale, &QPushButton::clicked, this, &ImageViewer::applyGrayscale);
     connect(btnCanny, &QPushButton::clicked, this, &ImageViewer::applyCannyEdge);
     connect(view, &ImageView::pixelHovered, this, &ImageViewer::onPixelHovered);
@@ -268,6 +271,14 @@ void ImageViewer::applyCannyEdge() {
     isProcessed = true;
     // updateDisplay();
     view->setImage(processedMat);
+}
+
+// 重置图像处理
+void ImageViewer::resetProcess()
+{
+    if (processedMat.empty()) return;    // 如果没有处理就return
+
+    view->setImage(originalMat);
 }
 
 // ImageViewer.cpp
