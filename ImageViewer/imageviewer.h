@@ -29,6 +29,8 @@ public slots:
     void onGrayscaleTriggered();
     void onGaussianBlurTriggered();
     void onResetProcess();
+    void onBlurTriggered();
+
 
 
 private:
@@ -54,5 +56,6 @@ private:
     void onPixelHovered(int x, int y, const QColor &color);
     void applyProcessor(const std::string &processorName);
     QWidget* gaussianBlurBoxLayout();
+    QWidget* blurBoxLayout();
 };
 #endif // IMAGEVIEWER_H

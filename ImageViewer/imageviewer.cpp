@@ -13,6 +13,7 @@
 #include <QCheckBox>
 #include <QLabel>
 #include "GaussianBlur.h"
+#include "Blur.h"
 
 ImageViewer::ImageViewer(QWidget *parent) : QMainWindow(parent) {
     // ========== 创建左侧工具箱 ==========
@@ -52,6 +53,10 @@ ImageViewer::ImageViewer(QWidget *parent) : QMainWindow(parent) {
     // 添加工具页：高斯滤波器处理
     QWidget *gaussianBlurPage = gaussianBlurBoxLayout();
     toolBox->addItem(gaussianBlurPage, "高斯滤波器");
+
+    // 中值滤波
+    QWidget *blurPage = blurBoxLayout();
+    toolBox->addItem(blurPage, "中值滤波器");
 
     // ========== 创建图形视图 ==========
     scene = new QGraphicsScene(this);
@@ -169,6 +174,42 @@ QWidget* ImageViewer::gaussianBlurBoxLayout()
 
     return gaussianBlurPage;
 }
+
+QWidget *ImageViewer::blurBoxLayout()
+{
+    QWidget *blurPage = new QWidget;
+    QFormLayout *formLayout = new QFormLayout(blurPage);
+
+    // 核大小选择（正奇数）
+    kernelSizeCombo = new QComboBox();
+    for (int i = 3; i <= 15; i += 2) {
+        kernelSizeCombo->addItem(QString::number(i) + "x" + QString::number(i), i);
+    }
+    formLayout->addRow("核大小:", kernelSizeCombo);
+
+    // 应用按钮
+    QPushButton *applyButton = new QPushButton("应用滤波", blurPage);
+    formLayout->addRow(applyButton);
+
+    // 注册中值滤波器处理器（绑定当前参数）
+    ProcessorFactory::registerProcessor("Blur", [this]() -> std::unique_ptr<ImageProcessor> {
+        // 从当前界面控件获取参数
+        int kernelSize = kernelSizeCombo->currentData().toInt();
+        // double sigmaX = this->sigmaXSpin->value();
+        // double sigmaY = this->sigmaYSpin->value();
+
+        // 创建并返回带参数的处理器
+        return std::make_unique<Blur>(kernelSize);
+    });
+
+    // connect
+    connect(applyButton, &QPushButton::clicked, this, &ImageViewer::onBlurTriggered);
+
+    return blurPage;
+}
+
+
+
 
 void ImageViewer::openImage()
 {
@@ -354,6 +395,11 @@ void ImageViewer::onGrayscaleTriggered() {
 void ImageViewer::onGaussianBlurTriggered()
 {
     applyProcessor("GaussianBlur");
+}
+
+void ImageViewer::onBlurTriggered()
+{
+    applyProcessor("Blur");
 }
 
 void ImageViewer::onCannyEdgeTriggered()

@@ -14,6 +14,7 @@ SOURCES += \
     imageviewer.cpp
 
 HEADERS += \
+    Blur.h \
     CannyEdgeProcessor.h \
     GaussianBlur.h \
     ImageProcessor.h \
