@@ -14,6 +14,7 @@
 #include <QLabel>
 #include "GaussianBlur.h"
 #include "Blur.h"
+#include "otsuProcessor.h"
 
 ImageViewer::ImageViewer(QWidget *parent) : QMainWindow(parent) {
     // ========== 创建左侧工具箱 ==========
@@ -57,6 +58,11 @@ ImageViewer::ImageViewer(QWidget *parent) : QMainWindow(parent) {
     // 中值滤波
     QWidget *blurPage = blurBoxLayout();
     toolBox->addItem(blurPage, "中值滤波器");
+
+    // 形态学操作
+    QWidget *morphologicalPage = morphologicalBoxLayout();
+    toolBox->addItem(morphologicalPage, "形态学操作");
+
 
     // ========== 创建图形视图 ==========
     scene = new QGraphicsScene(this);
@@ -195,8 +201,6 @@ QWidget *ImageViewer::blurBoxLayout()
     ProcessorFactory::registerProcessor("Blur", [this]() -> std::unique_ptr<ImageProcessor> {
         // 从当前界面控件获取参数
         int kernelSize = kernelSizeCombo->currentData().toInt();
-        // double sigmaX = this->sigmaXSpin->value();
-        // double sigmaY = this->sigmaYSpin->value();
 
         // 创建并返回带参数的处理器
         return std::make_unique<Blur>(kernelSize);
@@ -206,6 +210,26 @@ QWidget *ImageViewer::blurBoxLayout()
     connect(applyButton, &QPushButton::clicked, this, &ImageViewer::onBlurTriggered);
 
     return blurPage;
+}
+
+QWidget *ImageViewer::morphologicalBoxLayout()
+{
+    QWidget *morphologicalBlurPage = new QWidget;
+    QFormLayout *formLayout = new QFormLayout(morphologicalBlurPage);
+
+    /*addRow*/
+    QPushButton *applyButton = new QPushButton("OTSU自动阈值法", morphologicalBlurPage);
+    formLayout->addRow(applyButton);
+
+    // 注册OUST二值分割
+    ProcessorFactory::registerProcessor("OTSU", []() -> std::unique_ptr<ImageProcessor> {
+        return std::make_unique<OtsuProcessor>();
+    });
+
+    connect(applyButton, &QPushButton::clicked, this, &ImageViewer::onOtsuTriggered);
+
+    return morphologicalBlurPage;
+
 }
 
 
@@ -400,6 +424,11 @@ void ImageViewer::onGaussianBlurTriggered()
 void ImageViewer::onBlurTriggered()
 {
     applyProcessor("Blur");
+}
+
+void ImageViewer::onOtsuTriggered()
+{
+    applyProcessor("OTSU");
 }
 
 void ImageViewer::onCannyEdgeTriggered()

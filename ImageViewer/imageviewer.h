@@ -30,6 +30,7 @@ public slots:
     void onGaussianBlurTriggered();
     void onResetProcess();
     void onBlurTriggered();
+    void onOtsuTriggered();
 
 
 
@@ -57,5 +58,6 @@ private:
     void applyProcessor(const std::string &processorName);
     QWidget* gaussianBlurBoxLayout();
     QWidget* blurBoxLayout();
+    QWidget * morphologicalBoxLayout();
 };
 #endif // IMAGEVIEWER_H

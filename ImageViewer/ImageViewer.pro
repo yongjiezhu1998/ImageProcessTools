@@ -22,7 +22,8 @@ HEADERS += \
     ResetProcess.h \
     grayscaleprocessor.h \
     imageview.h \
-    imageviewer.h
+    imageviewer.h \
+    otsuProcessor.h
 
 FORMS += \
     imageviewer.ui
