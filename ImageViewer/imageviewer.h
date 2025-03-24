@@ -36,6 +36,7 @@ public slots:
 
 private:
     void updateDisplay();      // 更新显示
+    void updateDisplay(const cv::Mat &displayMat);
 
     QToolBox *toolBox;       // 新增：左侧工具箱
     QGraphicsScene *scene;
@@ -49,7 +50,15 @@ private:
 
     cv::Mat originalMat;       // OpenCV原始图像
     cv::Mat processedMat;      // 处理后的图像
+    cv::Mat ostuMat;
     bool isProcessed = false;  // 当前显示状态
+
+    // 形态学操作全局变量
+    int shape;
+    int ksize;
+    int iter;
+
+
     void wheelEvent(QWheelEvent *event);
     void mouseDoubleClickEvent(QMouseEvent *);
 
@@ -59,5 +68,6 @@ private:
     QWidget* gaussianBlurBoxLayout();
     QWidget* blurBoxLayout();
     QWidget * morphologicalBoxLayout();
+    void applyMorphologicalOperation(int operation);
 };
 #endif // IMAGEVIEWER_H

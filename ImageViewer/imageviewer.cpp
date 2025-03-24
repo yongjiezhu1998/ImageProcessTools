@@ -15,6 +15,10 @@
 #include "GaussianBlur.h"
 #include "Blur.h"
 #include "otsuProcessor.h"
+#include "DilationProcessor.h"
+#include "ErosionProcessor.h"
+#include "OpenProcessor.h"
+#include "CloseProcessor.h"
 
 ImageViewer::ImageViewer(QWidget *parent) : QMainWindow(parent) {
     // ========== 创建左侧工具箱 ==========
@@ -214,11 +218,11 @@ QWidget *ImageViewer::blurBoxLayout()
 
 QWidget *ImageViewer::morphologicalBoxLayout()
 {
-    QWidget *morphologicalBlurPage = new QWidget;
-    QFormLayout *formLayout = new QFormLayout(morphologicalBlurPage);
+    QWidget *morphPage = new QWidget;
+    QFormLayout *formLayout = new QFormLayout(morphPage);
 
     /*addRow*/
-    QPushButton *applyButton = new QPushButton("OTSU自动阈值法", morphologicalBlurPage);
+    QPushButton *applyButton = new QPushButton("OTSU自动阈值法", morphPage);
     formLayout->addRow(applyButton);
 
     // 注册OUST二值分割
@@ -228,8 +232,70 @@ QWidget *ImageViewer::morphologicalBoxLayout()
 
     connect(applyButton, &QPushButton::clicked, this, &ImageViewer::onOtsuTriggered);
 
-    return morphologicalBlurPage;
+    // return morphologicalBlurPage;
+    // 操作类型选择
+    QComboBox *operationCombo = new QComboBox(morphPage);
+    operationCombo->addItem("膨胀", cv::MORPH_DILATE);
+    operationCombo->addItem("腐蚀", cv::MORPH_ERODE);
+    operationCombo->addItem("开运算", cv::MORPH_OPEN);
+    operationCombo->addItem("闭运算", cv::MORPH_CLOSE);
+    formLayout->addRow("操作类型:", operationCombo);
 
+    // 结构元素形状
+    QComboBox *kernelShapeCombo = new QComboBox(morphPage);
+    kernelShapeCombo->addItem("矩形", cv::MORPH_RECT);
+    kernelShapeCombo->addItem("椭圆", cv::MORPH_ELLIPSE);
+    kernelShapeCombo->addItem("十字", cv::MORPH_CROSS);
+    formLayout->addRow("结构元素形状:", kernelShapeCombo);
+    shape = kernelShapeCombo->currentData().toInt();
+
+    // 结构元素大小（奇数）
+    QSpinBox *kernelSizeSpin = new QSpinBox(morphPage);
+    kernelSizeSpin->setMinimum(1);
+    kernelSizeSpin->setMaximum(31);
+    kernelSizeSpin->setSingleStep(2);
+    kernelSizeSpin->setValue(3);
+    formLayout->addRow("结构元素大小:", kernelSizeSpin);
+    ksize = kernelSizeSpin->value();
+
+    // 迭代次数
+    QSpinBox *iterationsSpin = new QSpinBox(morphPage);
+    iterationsSpin->setMinimum(1);
+    iterationsSpin->setMaximum(10);
+    iterationsSpin->setValue(1);
+    formLayout->addRow("迭代次数:", iterationsSpin);
+    iter = iterationsSpin->value();
+
+    // 应用按钮
+    QPushButton *Button = new QPushButton("应用形态学操作", morphPage);
+    formLayout->addRow(Button);
+
+    ProcessorFactory::registerProcessor("MORPH_DILATE", [this]()->std::unique_ptr<ImageProcessor> {
+        return std::make_unique<DilationProcessor>(cv::MORPH_DILATE, shape, ksize, iter);
+    });
+
+    ProcessorFactory::registerProcessor("MORPH_ERODE", [this]()-> std::unique_ptr<ImageProcessor>{
+        return std::make_unique<ErosionProcessor>(cv::MORPH_ERODE, shape, ksize, iter);
+    });
+
+    ProcessorFactory::registerProcessor("MORPH_OPEN", [this]()->std::unique_ptr<ImageProcessor>{
+        return std::make_unique<OpenProcessor>(cv::MORPH_OPEN, shape, ksize, iter);
+    });
+
+    ProcessorFactory::registerProcessor("MORPH_CLOSE", [this]()->std::unique_ptr<ImageProcessor> {
+        return std::make_unique<CloseProcessor>(cv::MORPH_CLOSE, shape, ksize, iter);
+    });
+
+    // 连接信号槽
+    connect(Button, &QPushButton::clicked, this, [this, operationCombo]() {
+        applyMorphologicalOperation(
+            operationCombo->currentData().toInt()
+            );
+    });
+
+
+
+    return morphPage;
 }
 
 
@@ -345,6 +411,54 @@ void ImageViewer::updateDisplay() {
     view->fitInView(scene->sceneRect(), Qt::KeepAspectRatio);
 }
 
+// ImageViewer.cpp
+void ImageViewer::updateDisplay(const cv::Mat &displayMat) {
+    scene->clear();
+
+    if (displayMat.empty()) {
+        qWarning() << "显示图像为空!";
+        return;
+    }
+
+    // 深拷贝图像数据并转换为 RGB 格式
+    cv::Mat displayMatCopy;
+    if (displayMat.channels() == 3) {
+        cv::cvtColor(displayMat, displayMatCopy, cv::COLOR_BGR2RGB); // BGR → RGB
+    } else if (displayMat.channels() == 1) {
+        cv::cvtColor(displayMat, displayMatCopy, cv::COLOR_GRAY2RGB); // 灰度 → RGB
+    } else {
+        qWarning() << "不支持的图像通道数:" << displayMat.channels();
+        return;
+    }
+
+    // 确保图像为 8UC3 格式
+    if (displayMatCopy.type() != CV_8UC3) {
+        displayMatCopy.convertTo(displayMatCopy, CV_8UC3);
+    }
+
+    // 创建 QImage 并深拷贝数据
+    QImage qimg(
+        displayMatCopy.data,
+        displayMatCopy.cols,
+        displayMatCopy.rows,
+        displayMatCopy.step,
+        QImage::Format_RGB888
+        );
+
+    // 添加图像项到场景
+    pixmapItem = scene->addPixmap(QPixmap::fromImage(qimg));
+    scene->setSceneRect(pixmapItem->boundingRect());
+
+    // 自适应缩放
+    if (!view->transform().isIdentity()) {
+        view->resetTransform();
+    }
+    view->fitInView(scene->sceneRect(), Qt::KeepAspectRatio);
+
+    // 强制刷新视图
+    view->viewport()->update();
+}
+
 void ImageViewer::processImage() {
     if (originalMat.empty()) return;
 
@@ -406,10 +520,47 @@ void ImageViewer::applyProcessor(const std::string &processorName) {
     }
 
     // 执行处理
-    cv::Mat result = processor->process(originalMat);
+    ostuMat = processor->process(originalMat);
 
     // 更新视图
+    view->setImage(ostuMat);
+}
+
+void ImageViewer::applyMorphologicalOperation(int operation) {
+    if (originalMat.empty()) return;
+
+    // 根据操作类型选择处理器
+    std::unique_ptr<ImageProcessor> processor;
+    switch (operation) {
+    case 0:
+        processor = ProcessorFactory::create("MORPH_DILATE");
+        qDebug() << "MORPH_DILATE";
+        break;
+    case 1:
+        processor = ProcessorFactory::create("MORPH_ERODE");
+        break;
+    case 2:
+        processor = ProcessorFactory::create("MORPH_OPEN");
+        break;
+    case 3:
+        processor = ProcessorFactory::create("MORPH_CLOSE");
+        break;
+    default:
+        QMessageBox::warning(this, "错误", "未知的操作类型");
+        return;
+    }
+
+    // 执行处理并显示
+    if (ostuMat.empty())
+    {
+        return;
+    }
+    cv::Mat result = processor->process(ostuMat);
+    // updateDisplay(result);
+    // 更新视图
+
     view->setImage(result);
+
 }
 
 void ImageViewer::onGrayscaleTriggered() {

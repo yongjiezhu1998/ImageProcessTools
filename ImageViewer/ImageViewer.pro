@@ -16,8 +16,13 @@ SOURCES += \
 HEADERS += \
     Blur.h \
     CannyEdgeProcessor.h \
+    CloseProcessor.h \
+    DilationProcessor.h \
+    ErosionProcessor.h \
     GaussianBlur.h \
     ImageProcessor.h \
+    MorphologyProcessor.h \
+    OpenProcessor.h \
     ProcessorFactory.h \
     ResetProcess.h \
     grayscaleprocessor.h \
