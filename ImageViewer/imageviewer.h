@@ -58,6 +58,40 @@ private:
     int ksize;
     int iter;
 
+    QPushButton* btnOpen;
+    QPushButton* btnSave;
+    QPushButton* btnReset;
+
+    QPushButton* btnResetProcess;
+    QPushButton* btnGrayscale;
+    QPushButton* btnCanny;
+    QPushButton* btnGaussian;
+
+
+    // 初始化UI
+    void initUI();
+
+    void setupConnections();
+
+    // 样式初始化
+    void initStyle();       
+
+    void createGraphicsView();
+
+    void setupMainLayout();
+
+    // 创建左侧工具箱
+    void createToolBox();
+
+    QWidget* createBasicToolsPage();
+
+    QWidget* createProcessPage();
+
+    QWidget* createGaussianBlurPage();
+
+    QWidget* createBlurPage();
+
+    QWidget* createMorphologicalPage();
 
     void wheelEvent(QWheelEvent *event);
     void mouseDoubleClickEvent(QMouseEvent *);

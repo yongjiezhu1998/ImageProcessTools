@@ -1,6 +1,5 @@
 #include "imageviewer.h"
 #include "ProcessorFactory.h"
-// #include "ui_imageviewer.h"
 #include <QWheelEvent>
 #include <QVBoxLayout>
 #include <QPushButton>
@@ -21,80 +20,36 @@
 #include "CloseProcessor.h"
 
 ImageViewer::ImageViewer(QWidget *parent) : QMainWindow(parent) {
-    // ========== 创建左侧工具箱 ==========
-    toolBox = new QToolBox(this);
+    
+    initUI();
 
-    // 添加工具页：基本操作
-    QWidget *basicToolsPage = new QWidget;
-    QVBoxLayout *basicLayout = new QVBoxLayout(basicToolsPage);
+    setupConnections();// 信号槽连接
 
-    QPushButton *btnOpen = new QPushButton("打开图片", basicToolsPage);
-    QPushButton *btnSave = new QPushButton("保存图片", basicToolsPage);
-    QPushButton *btnReset = new QPushButton("重置缩放", basicToolsPage);
-    basicLayout->addWidget(btnOpen);
-    basicLayout->addWidget(btnSave);
-    basicLayout->addWidget(btnReset);
-    basicLayout->addStretch(); // 占位填充
+    initStyle();
+}
 
-    toolBox->addItem(basicToolsPage, "基本操作");
+void ImageViewer::initUI()
+{
+     createToolBox();       // 创建左侧工具箱
+     createGraphicsView();  // 创建图形视图
+     setupMainLayout();     // 主布局管理
+}
 
-    // 添加工具页：图像处理
-    QWidget *processPage = new QWidget;
-    QVBoxLayout *processLayout = new QVBoxLayout(processPage);
-
-    QPushButton *resetProcess = new QPushButton("恢复原图", processPage);
-    QPushButton *btnGrayscale = new QPushButton("灰度化", processPage);
-    QPushButton *btnCanny = new QPushButton("边缘检测", processPage);
-    QPushButton *btnGaussian = new QPushButton("高斯滤波", processPage);
-
-    processLayout->addWidget(resetProcess);
-    processLayout->addWidget(btnGrayscale);
-    processLayout->addWidget(btnCanny);
-    processLayout->addWidget(btnGaussian);
-    processLayout->addStretch();
-
-    toolBox->addItem(processPage, "图像处理");
-
-    // 添加工具页：高斯滤波器处理
-    QWidget *gaussianBlurPage = gaussianBlurBoxLayout();
-    toolBox->addItem(gaussianBlurPage, "高斯滤波器");
-
-    // 中值滤波
-    QWidget *blurPage = blurBoxLayout();
-    toolBox->addItem(blurPage, "中值滤波器");
-
-    // 形态学操作
-    QWidget *morphologicalPage = morphologicalBoxLayout();
-    toolBox->addItem(morphologicalPage, "形态学操作");
-
-
-    // ========== 创建图形视图 ==========
-    scene = new QGraphicsScene(this);
-    // view = new QGraphicsView(scene);
-    view = new ImageView(this);
-    setCentralWidget(view);
-    view->setDragMode(QGraphicsView::ScrollHandDrag);
-    view->setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
-
-    // ========== 主布局 ==========
-    QSplitter *splitter = new QSplitter(Qt::Horizontal, this);
-    splitter->addWidget(toolBox);
-    splitter->addWidget(view);
-    splitter->setSizes({200, 824});
-    splitter->setStretchFactor(1, 1); // 右侧视图区域可拉伸
-
-    setCentralWidget(splitter); // 设置为主窗口中心部件
-
+void ImageViewer::setupConnections()
+{
     // ========== 信号连接 ==========
     connect(btnOpen, &QPushButton::clicked, this, &ImageViewer::openImage);
     connect(btnSave, &QPushButton::clicked, this, &ImageViewer::saveImage);
     connect(btnReset, &QPushButton::clicked, this, &ImageViewer::resetZoom);
-    connect(resetProcess, &QPushButton::clicked, this, &ImageViewer::onResetProcess);
+    connect(btnResetProcess, &QPushButton::clicked, this, &ImageViewer::onResetProcess);
     connect(btnGrayscale, &QPushButton::clicked, this, &ImageViewer::onGrayscaleTriggered);
     connect(btnCanny, &QPushButton::clicked, this, &ImageViewer::onCannyEdgeTriggered);
     connect(btnGaussian, &QPushButton::clicked, this, &ImageViewer::onGaussianBlurTriggered);
     connect(view, &ImageView::pixelHovered, this, &ImageViewer::onPixelHovered);
+}
 
+void ImageViewer::initStyle()
+{
     // 设置工具箱样式
     toolBox->setStyleSheet(
         "QToolBox::tab {"
@@ -108,11 +63,95 @@ ImageViewer::ImageViewer(QWidget *parent) : QMainWindow(parent) {
         "       stop:0 #D0D0FF, stop:1 #C0C0FF);"
         "}"
     );
+}
+
+void ImageViewer::createGraphicsView()
+{
+    // ========== 创建图形视图 ==========
+    scene = new QGraphicsScene(this);
+    view = new ImageView(this);
+    setCentralWidget(view);
+    view->setDragMode(QGraphicsView::ScrollHandDrag);
+    view->setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
+}
+
+void ImageViewer::setupMainLayout()
+{
+    // ========== 主布局 ==========
+    QSplitter* splitter = new QSplitter(Qt::Horizontal, this);
+    splitter->addWidget(toolBox);
+    splitter->addWidget(view);
+    splitter->setSizes({ 200, 824 });
+    splitter->setStretchFactor(1, 1); // 右侧视图区域可拉伸
+
+    setCentralWidget(splitter); // 设置为主窗口中心部件
 
     this->setFixedSize(1000, 800);
+    this->setMouseTracking(true); // 启用全局鼠标追踪
+}
 
-    // 在 ImageViewer 构造函数中添加
-    setMouseTracking(true); // 启用全局鼠标追踪
+void ImageViewer::createToolBox() {
+    toolBox = new QToolBox(this);
+    toolBox->addItem(createBasicToolsPage(), "基本操作");
+    toolBox->addItem(createProcessPage(), "图像处理");
+    toolBox->addItem(createGaussianBlurPage(), "高斯滤波器");
+    toolBox->addItem(createBlurPage(), "中值滤波器");
+    //toolBox->addItem(createMorphologicalPage(), "形态学操作");
+}
+
+QWidget* ImageViewer::createBasicToolsPage() {
+    QWidget* basicToolsPage = new QWidget;
+    QVBoxLayout* layout = new QVBoxLayout(basicToolsPage);
+
+    btnOpen = new QPushButton("打开图片", basicToolsPage);
+    btnSave = new QPushButton("保存图片", basicToolsPage);
+    btnReset = new QPushButton("重置缩放", basicToolsPage);
+
+    layout->addWidget(btnOpen);
+    layout->addWidget(btnSave);
+    layout->addWidget(btnReset);
+    layout->addStretch();
+    return basicToolsPage;
+}
+
+QWidget* ImageViewer::createProcessPage()
+{
+    QWidget* processPage = new QWidget;
+    QVBoxLayout* processLayout = new QVBoxLayout(processPage);
+
+    btnResetProcess = new QPushButton("恢复原图", processPage);
+    btnGrayscale = new QPushButton("灰度化", processPage);
+    btnCanny = new QPushButton("边缘检测", processPage);
+    btnGaussian = new QPushButton("高斯滤波", processPage);
+
+    processLayout->addWidget(btnResetProcess);
+    processLayout->addWidget(btnGrayscale);
+    processLayout->addWidget(btnCanny);
+    processLayout->addWidget(btnGaussian);
+    processLayout->addStretch();
+
+    return processPage;
+}
+
+QWidget* ImageViewer::createGaussianBlurPage()
+{
+    QWidget* gaussianBlurPage = gaussianBlurBoxLayout();
+
+    return gaussianBlurPage;
+}
+
+QWidget* ImageViewer::createBlurPage()
+{
+    QWidget* blurPage = blurBoxLayout();
+
+    return blurPage;
+}
+
+QWidget* ImageViewer::createMorphologicalPage()
+{
+    QWidget* morphologicalPage = morphologicalBoxLayout();
+
+    return morphologicalPage;
 }
 
 QWidget* ImageViewer::gaussianBlurBoxLayout()
