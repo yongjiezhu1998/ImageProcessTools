@@ -12,6 +12,7 @@
 #include <QToolBox>
 #include <QDoubleSpinBox>
 #include <QComboBox>
+#include <QSettings>
 
 class ImageViewer : public QMainWindow {
     Q_OBJECT
@@ -31,7 +32,11 @@ public slots:
     void onResetProcess();
     void onBlurTriggered();
     void onOtsuTriggered();
+    void onOpenCamera();
 
+public Q_SLOTS:
+    void on_open_triggered();
+    void on_fixWindow_triggered(bool checked);
 
 
 private:
@@ -66,14 +71,18 @@ private:
     QPushButton* btnGrayscale;
     QPushButton* btnCanny;
     QPushButton* btnGaussian;
+    QPushButton* btnCreteLineEdit;
 
+    QPushButton* openCameraButton;
+    QPushButton* closeCameraButton;
 
-    // 初始化UI
+    cv::VideoCapture cap;
+
+    
     void initUI();
 
     void setupConnections();
 
-    // 样式初始化
     void initStyle();       
 
     void createGraphicsView();
@@ -93,6 +102,8 @@ private:
 
     QWidget* createMorphologicalPage();
 
+    QWidget* createCameraPage();
+
     void wheelEvent(QWheelEvent *event);
     void mouseDoubleClickEvent(QMouseEvent *);
 
@@ -102,6 +113,7 @@ private:
     QWidget* gaussianBlurBoxLayout();
     QWidget* blurBoxLayout();
     QWidget * morphologicalBoxLayout();
+    QWidget* cameraBoxLayout();
     void applyMorphologicalOperation(int operation);
 };
 #endif // IMAGEVIEWER_H

@@ -2,12 +2,14 @@
 #include <QGraphicsScene>
 #include <QMouseEvent>
 #include <QDebug>
+#include <EditableTextItem.h>
+#include <QlineEdit>
+#include <Qvalidator>
 
 ImageView::ImageView(QWidget *parent) : QGraphicsView(parent) {
     // 初始化场景和视图属性
     QGraphicsScene *scene = new QGraphicsScene(this);
     setScene(scene);
-
     // 禁用拖拽模式并启用鼠标追踪
     setDragMode(QGraphicsView::NoDrag);
     setMouseTracking(true);
@@ -70,3 +72,14 @@ void ImageView::mouseMoveEvent(QMouseEvent *event) {
 
     QGraphicsView::mouseMoveEvent(event);
 }
+
+// 创建文本框
+void ImageView::addTextItem()
+{
+    // 创建一个EditableTextItem
+    //EditableTextItem* textItem = new EditableTextItem("hellow");
+    QLineEdit* textItem = new QLineEdit("1");
+    scene()->addWidget(textItem);
+    textItem->setValidator(new QIntValidator);
+}
+

@@ -18,7 +18,11 @@ signals:
 protected:
     void mouseMoveEvent(QMouseEvent *event) override;
 
+public slots:
+    void addTextItem();
+
 private:
     cv::Mat currentImage; // 当前显示的图像数据
     QGraphicsPixmapItem *pixmapItem = nullptr;
+    //QGraphicsScene* scene;
 };

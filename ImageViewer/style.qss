@@ -1,0 +1,10 @@
+/* style.qss */
+QToolBox::tab {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #F0F0F0, stop:1 #E0E0E0);
+    border-radius: 4px;
+    margin: 2px;
+}
+
+QToolBox::tab:selected {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #D0D0FF, stop:1 #C0C0FF);
+}

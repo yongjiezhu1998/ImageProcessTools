@@ -11,6 +11,9 @@
 #include <QDoubleSpinBox>
 #include <QCheckBox>
 #include <QLabel>
+#include <QMenuBar>
+#include <QSettings>
+//#include <QCameraInfo>
 #include "GaussianBlur.h"
 #include "Blur.h"
 #include "otsuProcessor.h"
@@ -19,20 +22,71 @@
 #include "OpenProcessor.h"
 #include "CloseProcessor.h"
 
+/*
+TODO: 使用QSetting保存窗口大小的设置
+*/
+
 ImageViewer::ImageViewer(QWidget *parent) : QMainWindow(parent) {
-    
+    // 初始化UI
     initUI();
 
-    setupConnections();// 信号槽连接
+    auto menuBar = new QMenuBar();
+    setMenuBar(menuBar);
+    QMenu* fileMenu = menuBar->addMenu("文件");
 
+    QAction* open = fileMenu->addAction("打开");
+    open->setObjectName("open");
+    QAction* save = fileMenu->addAction("保存");
+    QAction* saveAs = fileMenu->addAction("另存为");
+
+    QMenu* editMenu = menuBar->addMenu("文件");
+    QAction* fixWindow = editMenu->addAction("固定窗口");
+    QSettings settings("GUHUO", "PHOTO");
+    bool fixWindowSetting = settings.value("fixWindow", true).toBool();
+    fixWindow->setCheckable(fixWindowSetting);
+    fixWindow->setObjectName("fixWindow");
+    on_fixWindow_triggered(fixWindowSetting);
+    QMetaObject::connectSlotsByName(this);
+
+    // 信号槽连接
+    setupConnections();
+    // 样式初始化
     initStyle();
 }
 
 void ImageViewer::initUI()
 {
+    //qDebug() << "initUI";
      createToolBox();       // 创建左侧工具箱
+
+
      createGraphicsView();  // 创建图形视图
      setupMainLayout();     // 主布局管理
+}
+
+void ImageViewer::on_open_triggered()
+{
+    qDebug() << "open";
+}
+
+void ImageViewer::on_fixWindow_triggered(bool checked)
+{
+    //qDebug() << "on_fixWindow_triggered" << checked;
+    if (checked)
+    {
+        //qDebug() << "1";
+        setFixedSize(this->width(), this->height());
+    }
+    else
+    {
+        //qDebug() << "2";
+        resize(this->width(), this->height());
+        setMinimumSize(0, 0);          // 取消最小尺寸限制
+        setMaximumSize(QWIDGETSIZE_MAX, QWIDGETSIZE_MAX); // 取消最大尺寸限制
+    }
+
+    QSettings setting("GUHUO", "PHOTO");
+    setting.setValue("fixWindow", checked);
 }
 
 void ImageViewer::setupConnections()
@@ -46,6 +100,8 @@ void ImageViewer::setupConnections()
     connect(btnCanny, &QPushButton::clicked, this, &ImageViewer::onCannyEdgeTriggered);
     connect(btnGaussian, &QPushButton::clicked, this, &ImageViewer::onGaussianBlurTriggered);
     connect(view, &ImageView::pixelHovered, this, &ImageViewer::onPixelHovered);
+    connect(openCameraButton, &QPushButton::clicked, this, &ImageViewer::onOpenCamera);
+    connect(btnCreteLineEdit, &QPushButton::clicked, view, &ImageView::addTextItem);
 }
 
 void ImageViewer::initStyle()
@@ -86,7 +142,7 @@ void ImageViewer::setupMainLayout()
 
     setCentralWidget(splitter); // 设置为主窗口中心部件
 
-    this->setFixedSize(1000, 800);
+   resize(1000, 800);
     this->setMouseTracking(true); // 启用全局鼠标追踪
 }
 
@@ -96,11 +152,12 @@ void ImageViewer::createToolBox() {
     toolBox->addItem(createProcessPage(), "图像处理");
     toolBox->addItem(createGaussianBlurPage(), "高斯滤波器");
     toolBox->addItem(createBlurPage(), "中值滤波器");
-    //toolBox->addItem(createMorphologicalPage(), "形态学操作");
+    toolBox->addItem(createMorphologicalPage(), "形态学操作");
+    toolBox->addItem(createCameraPage(), "摄像头");
 }
 
 QWidget* ImageViewer::createBasicToolsPage() {
-    QWidget* basicToolsPage = new QWidget;
+    QWidget* basicToolsPage = new QWidget(this);
     QVBoxLayout* layout = new QVBoxLayout(basicToolsPage);
 
     btnOpen = new QPushButton("打开图片", basicToolsPage);
@@ -116,18 +173,20 @@ QWidget* ImageViewer::createBasicToolsPage() {
 
 QWidget* ImageViewer::createProcessPage()
 {
-    QWidget* processPage = new QWidget;
+    QWidget* processPage = new QWidget(this);
     QVBoxLayout* processLayout = new QVBoxLayout(processPage);
 
     btnResetProcess = new QPushButton("恢复原图", processPage);
     btnGrayscale = new QPushButton("灰度化", processPage);
     btnCanny = new QPushButton("边缘检测", processPage);
     btnGaussian = new QPushButton("高斯滤波", processPage);
+    btnCreteLineEdit = new QPushButton("添加可编辑文本框", processPage);
 
     processLayout->addWidget(btnResetProcess);
     processLayout->addWidget(btnGrayscale);
     processLayout->addWidget(btnCanny);
     processLayout->addWidget(btnGaussian);
+    processLayout->addWidget(btnCreteLineEdit);
     processLayout->addStretch();
 
     return processPage;
@@ -154,9 +213,16 @@ QWidget* ImageViewer::createMorphologicalPage()
     return morphologicalPage;
 }
 
+QWidget* ImageViewer::createCameraPage()
+{
+    QWidget* morphologicalPage = cameraBoxLayout();
+
+    return morphologicalPage;
+}
+
 QWidget* ImageViewer::gaussianBlurBoxLayout()
 {
-    QWidget *gaussianBlurPage = new QWidget;
+    QWidget *gaussianBlurPage = new QWidget(this);
     QFormLayout *formLayout = new QFormLayout(gaussianBlurPage);
 
     // 核大小选择（正奇数）
@@ -226,7 +292,7 @@ QWidget* ImageViewer::gaussianBlurBoxLayout()
 
 QWidget *ImageViewer::blurBoxLayout()
 {
-    QWidget *blurPage = new QWidget;
+    QWidget *blurPage = new QWidget(this);
     QFormLayout *formLayout = new QFormLayout(blurPage);
 
     // 核大小选择（正奇数）
@@ -257,7 +323,7 @@ QWidget *ImageViewer::blurBoxLayout()
 
 QWidget *ImageViewer::morphologicalBoxLayout()
 {
-    QWidget *morphPage = new QWidget;
+    QWidget *morphPage = new QWidget(this);
     QFormLayout *formLayout = new QFormLayout(morphPage);
 
     /*addRow*/
@@ -335,6 +401,22 @@ QWidget *ImageViewer::morphologicalBoxLayout()
 
 
     return morphPage;
+}
+
+QWidget* ImageViewer::cameraBoxLayout()
+{
+    QWidget* cameraPage = new QWidget(this);
+    QFormLayout* formLayout = new QFormLayout(cameraPage);
+
+    openCameraButton = new QPushButton("打开摄像头", cameraPage);
+    closeCameraButton = new QPushButton("关闭摄像头", cameraPage);
+
+    formLayout->addRow(openCameraButton);
+    formLayout->addRow(closeCameraButton);
+    //qDebug() << "camera";
+    
+
+    return cameraPage;
 }
 
 
@@ -619,6 +701,12 @@ void ImageViewer::onBlurTriggered()
 void ImageViewer::onOtsuTriggered()
 {
     applyProcessor("OTSU");
+}
+
+void ImageViewer::onOpenCamera()
+{
+    qDebug() << "onOpenCamera";
+    //VideoCapture captrue(0);
 }
 
 void ImageViewer::onCannyEdgeTriggered()
